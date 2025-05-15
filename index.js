@@ -2,12 +2,13 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
-
+const cors = require("cors")
 const app = express();
 const port = 3000;
 
 // Middleware
-app.use(bodyParser.json());
+app.use(cors());
+app.use(express.json());
 
 // MongoDB ulanishi
 mongoose.connect('mongodb+srv://Ikromov:O2wteU4Tx9ZYLFnT@books.qkcfe.mongodb.net/?retryWrites=true&w=majority&appName=Books', {
@@ -51,7 +52,6 @@ function getSign(method, url, body, secret) {
 // Auth middleware
 async function authenticate(req, res, next) {
     if (req.path === '/signup') return next();
-    console.log(req.header('Sign'))
     const userKey = req.header('Key');
     const signHeader = req.header('Sign');
 

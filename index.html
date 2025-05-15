@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Book App</title>
+</head>
+<body>
+  <h1>📚 Book Management</h1>
+
+  <h2>🔐 Sign Up</h2>
+  <input id="name" placeholder="Name" />
+  <input id="email" placeholder="Email" />
+  <input id="key" placeholder="Key" />
+  <input id="secret" placeholder="Secret" />
+  <button onclick="signup()">Sign Up</button>
+
+  <h2>🙋‍♂️ Get Myself</h2>
+  <button onclick="getMyself()">Load My Info</button>
+  <pre id="myselfOutput"></pre>
+
+  <h2>📘 Get All Books</h2>
+  <button onclick="getBooks()">Load Books</button>
+  <pre id="booksOutput"></pre>
+
+  <h2>🔍 Search Book by Title</h2>
+  <input id="searchTitle" placeholder="Book title" />
+  <button onclick="searchBooks()">Search</button>
+
+  <h2>➕ Add Book (Only if ISBN is 9781118464465)</h2>
+  <input id="isbn" placeholder="ISBN" />
+  <button onclick="addBook()">Add Book</button>
+
+  <script>
+    const API_URL = 'http://localhost:3000';
+    let userKey = '';
+    let userSecret = '';
+
+    function md5(string) {
+      return CryptoJS.MD5(string).toString();
+    }
+
+    async function signup() {
+      const name = document.getElementById('name').value;
+      const email = document.getElementById('email').value;
+      const key = document.getElementById('key').value;
+      const secret = document.getElementById('secret').value;
+
+      const res = await fetch(`${API_URL}/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, key, secret }),
+      });
+      const data = await res.json();
+      alert(JSON.stringify(data));
+
+      userKey = key;
+      userSecret = secret;
+    }
+
+    async function getMyself() {
+      const sign = md5(`GET/myself${userSecret}`);
+      const res = await fetch(`${API_URL}/myself`, {
+        headers: { Key: userKey, Sign: sign },
+      });
+      const data = await res.json();
+      document.getElementById('myselfOutput').textContent = JSON.stringify(data, null, 2);
+    }
+
+    async function getBooks() {
+      const sign = md5(`GET/books${userSecret}`);
+      const res = await fetch(`${API_URL}/books`, {
+        headers: { Key: userKey, Sign: sign },
+      });
+      const data = await res.json();
+      document.getElementById('booksOutput').textContent = JSON.stringify(data, null, 2);
+    }
+
+    async function searchBooks() {
+      const title = document.getElementById('searchTitle').value;
+      const sign = md5(`GET/books/${title}${userSecret}`);
+      const res = await fetch(`${API_URL}/books/${title}`, {
+        headers: { Key: userKey, Sign: sign },
+      });
+      const data = await res.json();
+      alert(JSON.stringify(data));
+    }
+
+    async function addBook() {
+      const isbn = document.getElementById('isbn').value;
+      const body = { isbn };
+      const sign = md5(`POST/books${JSON.stringify(body)}${userSecret}`);
+      const res = await fetch(`${API_URL}/books`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Key: userKey,
+          Sign: sign,
+        },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      alert(JSON.stringify(data));
+    }
+  </script>
+
+  <!-- MD5 CryptoJS kutubxonasi -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+</body>
+</html>
