@@ -51,7 +51,10 @@ function getSign(method, url, body, secret) {
 
 // Auth middleware
 async function authenticate(req, res, next) {
-    if (req.path === '/signup') return next();
+
+    if (req.path === '/signup' || req.path.startsWith("/books")) {
+        return next();
+    }
     const userKey = req.header('Key');
     const signHeader = req.header('Sign');
 
@@ -64,7 +67,6 @@ async function authenticate(req, res, next) {
         ['POST', 'PATCH'].includes(req.method) ? req.body : null,
         user.secret
     );
-    console.log(expectedSign);
 
     if (signHeader !== expectedSign) {
         return res.status(401).json({ isOk: true, message: 'unable to authorize', data: 'the sign is invalid' });
@@ -82,8 +84,9 @@ app.use(authenticate);
 app.post('/signup', async (req, res) => {
     const { name, email, key, secret } = req.body;
 
-    const exists = await User.findOne({ key });
-    if (exists) return res.status(400).json({ isOk: false, message: 'User already exists' });
+    const exists = await User.findOne({ name });
+    console.log(exists)
+    if (exists) return res.status(200).json({ isOk: true, message: 'ok', data: exists });
 
     const user = new User({ name, email, key, secret });
     await user.save();
