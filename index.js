@@ -38,7 +38,7 @@ const bookSchema = new mongoose.Schema({
     title: String,
     author: String,
     published: Number,
-    pages: Number,
+    pages: String,
     cover: String,
     status: Number,
 });
