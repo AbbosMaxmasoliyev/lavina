@@ -1,5 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const axios = require('axios');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
 const cors = require("cors")
@@ -54,7 +55,7 @@ function getSign(method, url, body, secret) {
 // Auth middleware
 async function authenticate(req, res, next) {
 
-    if (req.path === '/signup' || req.path.startsWith("/books")) {
+    if (req.path === '/signup' || (req.path.startsWith("/books") && req.method === "GET")) {
         return next();
     }
     const userKey = req.header('Key');
@@ -85,6 +86,8 @@ app.use(authenticate);
 // 1. Signup
 app.post('/signup', async (req, res) => {
     const { name, email, key, secret } = req.body;
+
+
 
     const exists = await User.findOne({ name });
     console.log(exists)
@@ -118,28 +121,57 @@ app.get('/books/:title', async (req, res) => {
 app.post('/books', async (req, res) => {
     const { isbn } = req.body;
 
-    if (isbn === '9781118464465') {
-        const newBook = new Book({
-            isbn,
-            title: 'Raspberry Pi User Guide',
-            author: 'Eben Upton',
-            published: 2012,
-            pages: 221,
-            cover: 'http://url.to.book.cover',
-            status: 2,
+    if (!isbn) {
+        return res.status(400).json({
+            isOk: false,
+            message: 'ISBN is required',
+            data: null
         });
-
-        await newBook.save();
-        return res.json({ isOk: true, message: 'ok', data: newBook });
     }
 
-    res.status(400).json({
-        isOk: true,
-        message: 'book not found',
-        data: 'openlibrary did not responded propperly',
-    });
-});
+    try {
+        // Open Library API-dan kitob ma'lumotlarini olish
+        const response = await axios.get(`https://openlibrary.org/isbn/${isbn}.json`);
 
+        const bookData = response.data;
+
+        if (!bookData) {
+            return res.status(400).json({
+                isOk: false,
+                message: 'Book not found',
+                data: 'OpenLibrary did not respond properly'
+            });
+        }
+
+        // Kitob ma'lumotlarini bazaga saqlash
+        const newBook = new Book({
+            isbn,
+            title: bookData.title || 'Unknown Title',
+            author: bookData.authors ? bookData.authors.map(author => author.name).join(', ') : 'Unknown Author',
+            published: new Date(bookData.publish_date).getTime() || 'Unknown Date',
+            pages: bookData.number_of_pages || 'Unknown Pages',
+            cover: bookData.cover ? `http://covers.openlibrary.org/b/id/${bookData.cover.large}-L.jpg` : 'No cover available',
+            status: 2, // statusni kerakli holatga qo'ying (masalan, 2 - kitob mavjud)
+        });
+
+        // Kitobni bazaga saqlash
+        await newBook.save();
+
+        return res.json({
+            isOk: true,
+            message: 'Book saved successfully',
+            data: newBook
+        });
+
+    } catch (error) {
+        console.error('Error fetching book data:', error);
+        return res.status(500).json({
+            isOk: false,
+            message: 'Error fetching book data from OpenLibrary',
+            data: error.message
+        });
+    }
+});
 // 6. Edit book status
 app.patch('/books/:id', async (req, res) => {
     const { id } = req.params;
